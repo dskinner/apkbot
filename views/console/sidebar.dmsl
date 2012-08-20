@@ -1,0 +1,25 @@
+#sidebar
+	.span3 .well.sidebar-nav
+		%ul#package-list.nav.nav-list
+			%li.nav-header Packages
+
+			{range .Apks}
+			%li %a[href=/console/index?name={.Badging.Package.Name}]
+
+				%img.pull-left.icon-32
+					[style="margin-right: 10px;"]
+					[src=/console/icon?id={.IconId.Hex}]
+
+				{if .ReportIds}
+				%span.typeahead.alert-error.pull-right
+					[style="padding:3px;"]
+					{len .ReportIds}
+				{end}
+
+				{.Badging.ApplicationLabel}
+
+				%span[style="font-size:0.85em;padding:3px;"] vc{.Badging.Package.VersionCode}<br/>
+				%span[style="font-size:0.85em;"] {.Badging.Package.Name}
+
+			%li.divider
+			{end}

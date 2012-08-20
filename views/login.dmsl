@@ -1,0 +1,17 @@
+:extends overlay.dmsl
+
+#content #login
+
+		{if .}{range .}
+		#login-error .alert.alert-error {.}
+		{end}{end}
+
+		%form[action=][method=post]
+
+				%label[for=email] Email
+				%input#email[name=email][type=text]
+
+				%label[for=password] Password
+				%input#password[name=password][type=password]
+				<br/>
+				%input#submit.btn[type=submit][value=Login]

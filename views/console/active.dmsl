@@ -1,0 +1,39 @@
+.hero-unit
+	%img.pull-left[width=72]
+		[style="margin-right: 10px;"]
+		[src=/console/icon?id={.Active.IconId.Hex}]
+
+	%h2 {.Active.Badging.ApplicationLabel}
+		%span[style=font-weight:normal;font-size:0.6em;] {.Active.Time}
+
+	%p
+		%b package
+		%span {.Active.Badging.Package.Name}
+		%b vc
+		%span {.Active.Badging.Package.VersionCode}
+		%b vn
+		%span {.Active.Badging.Package.VersionName}
+
+	%p
+		.btn-group[style=float:left;margin-right:5px;]
+			%a.btn.btn-primary.btn-large.dropdown-toggle
+				[data-toggle=dropdown]
+				[href=#]
+				History&nbsp;
+				%span.caret
+
+			%ul.dropdown-menu[style="max-height:250px;width:auto;overflow:auto;"]
+				{range $i, $el := .History}
+				%li %a[href=/console/index?name={$el.Badging.Package.Name}&active={$el.Id.Hex}]
+						%div {$el.Time.Month} {$el.Time.Day}, {$el.Time.Year}
+						%div vc{$el.Badging.Package.VersionCode} vn{$el.Badging.Package.VersionName}&nbsp;
+							{if $el.ReportIds}
+							%span.typeahead.alert-error
+								[style="padding:3px;"]
+								{len $el.ReportIds}
+							{end}
+				%li.divider
+				{end}
+
+		%a.btn.btn-primary.btn-large[href=/console/download?id={.Active.Id.Hex}] Download
+		%a.btn.btn-primary.btn-large Testers

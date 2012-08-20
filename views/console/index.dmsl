@@ -1,0 +1,46 @@
+:extends overlay.dmsl
+
+:include console/toolbar.dmsl
+:include console/sidebar.dmsl
+
+#content
+	.span9
+		{if .Active}
+		:include console/active.dmsl
+		{end}
+
+		{if .Report}
+
+		// ErrorReport field values
+		%row-fluid
+			%h4 Time Received
+			%pre `{.Report.Time}`
+		%row-fluid
+			%h4 Stack Trace
+			%pre `{.Report.StackTrace}`
+
+		{else}
+		{if .Errors}
+
+		%table.table
+			%thead
+				%tr
+					%th Count
+					%th Last Seen
+					%th Error
+			%tbody
+				{$name := .Active.Badging.Package.Name}
+				{$id := .Active.Id.Hex}
+				{range .Errors}
+				%tr
+					%td {.count}
+					%td {.duration}
+					%td %a[href=/console/index?name={$name}&active={$id}&report={.id.Hex}] {.stacktrace}
+				{end}
+
+		{else}
+
+		%h3 No Errors Reported
+
+		{end}
+		{end}

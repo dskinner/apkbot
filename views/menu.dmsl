@@ -1,0 +1,22 @@
+.upload
+	%img
+		[src=/images/upload.png]
+		[align=left]
+		[alt=Upload]
+
+	%span Upload
+	%form
+		[action=/console/upload]
+		[method=post]
+		[enctype=multipart/form-data]
+
+		%input
+			[type=file]
+			[name=apk]
+			[onchange="this.form.submit();"]
+
+%span.account
+	%a.profile[href=/console/profile] Foo Bar{/*name*/}
+	%a.logout[href=/logout] %img[src=/images/logout.png][alt=Logout]
+
+
