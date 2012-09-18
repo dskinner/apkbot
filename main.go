@@ -7,10 +7,12 @@ import (
 	"labix.org/v2/mgo/bson"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"runtime/pprof"
 )
 
 func login(w http.ResponseWriter, r *http.Request) *dae.Error {
-
 	c := dae.NewContext(r)
 
 	if r.Method == "GET" {
@@ -171,9 +173,12 @@ func init() {
 }
 
 var adduser = flag.String("adduser", "", "add a new user with the given email")
+var memprofile = flag.String("memprofile", "", "write memory profile to this file")
 
 func main() {
 	flag.Parse()
+
+
 	if *adduser != "" {
 		u := user.New()
 		u.Email = *adduser
@@ -185,6 +190,23 @@ func main() {
 		}
 		log.Print("user added, password is `qwerty`.")
 	} else {
+		if *memprofile != "" {
+
+			c := make(chan os.Signal)
+			signal.Notify(c)
+			go func() {
+				for sig := range c {
+					log.Printf("Received %v", sig)
+					f, err := os.Create(*memprofile)
+					if err != nil {
+						log.Fatal(err)
+					}
+					pprof.WriteHeapProfile(f)
+					f.Close()
+				}
+			}()
+		}
 		log.Fatal(http.ListenAndServe("localhost:8090", nil))
+
 	}
 }
