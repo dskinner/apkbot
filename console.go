@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-
 //
 func stacktraceCollapse(reports []*Report) (traces []string) {
 
@@ -79,7 +78,7 @@ func attachGroupDetails(master *Report, reports []*Report) {
 		rTrace := traces[i]
 
 		if mTrace == rTrace {
-		//if master.StackTrace == report.StackTrace {
+			//if master.StackTrace == report.StackTrace {
 
 			master.TotalErrors += 1
 

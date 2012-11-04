@@ -138,7 +138,6 @@ func profilePassword(w http.ResponseWriter, r *http.Request) *dae.Error {
 	return nil
 }
 
-
 type StringSlice []string
 
 func (slice StringSlice) Contains(s string) bool {
@@ -158,7 +157,6 @@ func (slice StringSlice) Count(s string) (count int) {
 	}
 	return count
 }
-
 
 func test() {
 	var slice []string
@@ -211,7 +209,6 @@ var memprofile = flag.String("memprofile", "", "write memory profile to this fil
 
 func main() {
 	flag.Parse()
-
 
 	if *adduser != "" {
 		u := user.New()

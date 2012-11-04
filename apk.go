@@ -5,16 +5,16 @@ import (
 	"bytes"
 	"dasa.cc/dae"
 	"dasa.cc/dae/user"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
 	"time"
-	"encoding/csv"
-	"reflect"
 )
 
 type Apk struct {
@@ -43,7 +43,7 @@ type Report struct {
 
 	// Group details
 	Brands          []string
-	PhoneModels          []string
+	PhoneModels     []string
 	ReportIds       []bson.ObjectId
 	AndroidVersions []string
 	UniqueInstalls  int
