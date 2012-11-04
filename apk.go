@@ -13,6 +13,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"encoding/csv"
+	"reflect"
 )
 
 type Apk struct {
@@ -38,6 +40,14 @@ type Report struct {
 	Id    bson.ObjectId `_id`
 	ApkId bson.ObjectId
 	Time  time.Time
+
+	// Group details
+	Brands          []string
+	PhoneModels          []string
+	ReportIds       []bson.ObjectId
+	AndroidVersions []string
+	UniqueInstalls  int
+	TotalErrors     int
 
 	// ACRA details
 	AndroidVersion       string `ANDROID_VERSION`
@@ -73,6 +83,64 @@ type Report struct {
 	UserComment          string `USER_COMMENT`
 	UserCrashDate        string `USER_CRASH_DATE`
 	UserEmail            string `USER_EMAIL`
+}
+
+func ignoreField(name string) bool {
+	switch name {
+	case "Id", "ApkId", "Time", "Brands", "PhoneModels", "ReportIds", "AndroidVersions", "UniqueInstalls", "TotalErrors":
+		return true
+	}
+	return false
+}
+
+func listFields(data interface{}) (fields []string) {
+	t := reflect.ValueOf(data).Type()
+	for i := 0; i < t.NumField(); i++ {
+		name := t.Field(i).Name
+		if ignoreField(name) {
+			continue
+		}
+		fields = append(fields, t.Field(i).Name)
+	}
+	return fields
+}
+
+func exportCSV(w http.ResponseWriter, r *http.Request) *dae.Error {
+
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", "attachment;filename=export.csv")
+
+	wrtr := csv.NewWriter(w)
+
+	var sampleReport Report
+	csvHeaders := listFields(sampleReport)
+	wrtr.Write(csvHeaders)
+
+	db := dae.NewDB()
+	defer db.Close()
+
+	var reports []*Report
+	q := bson.M{"apkid": bson.ObjectIdHex(r.FormValue("id"))}
+	if err := db.C("reports").Find(q).All(&reports); err != nil {
+		return dae.NewError(err, 500, "Error querying for apk reports.")
+	}
+
+	for _, report := range reports {
+		var record []string
+		s := reflect.ValueOf(report).Elem()
+		t := s.Type()
+		for i := 0; i < s.NumField(); i++ {
+			f := s.Field(i)
+			if ignoreField(t.Field(i).Name) {
+				continue
+			}
+			record = append(record, f.String())
+		}
+
+		wrtr.Write(record)
+	}
+
+	return nil
 }
 
 // report is a web handler that saves ACRA reports.
@@ -116,6 +184,9 @@ func report(w http.ResponseWriter, r *http.Request) *dae.Error {
 	if err := db.C("apks").UpdateId(apk.Id, apk); err != nil {
 		return dae.NewError(err, 500, "Error updating apk reportids")
 	}
+
+	// send email notify if desired by user
+	//user.
 
 	return nil
 }
@@ -317,6 +388,7 @@ func parseMap(s string) map[string]interface{} {
 // register our web handlers.
 func init() {
 	http.Handle("/console/upload", dae.NewHandler(dae.Auth, upload))
+	http.Handle("/console/exportCSV", dae.NewHandler(dae.Auth, exportCSV))
 	http.Handle("/report", dae.Handler(report))
 	http.Handle("/report_error", dae.Handler(report)) // compat for apps in the wild
 }

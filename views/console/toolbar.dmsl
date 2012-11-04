@@ -29,5 +29,5 @@
 				%i.icon-upload
 				\ Upload
 
-		%li %a[href=/console/index] Console
+		%li.active %a[href=/console/index] Console
 

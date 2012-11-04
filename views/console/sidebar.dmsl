@@ -1,25 +1,33 @@
 #sidebar
-	.span3 .well.sidebar-nav
+	.span3 .well.sidebar-nav[style="padding-left: 0px !important; padding-right: 0px !important;"]
+
 		%ul#package-list.nav.nav-list
 			%li.nav-header Packages
+				.btn-group.pull-right
+					%a.btn.btn-small.dropdown-toggle[data-toggle=dropdown][href=#]
+						%span.caret
+					%ul.dropdown-menu
+						%li %a[href=#] Alphabetical
+						%li %a[href=#] Last Upload
+			%li.divider
 
 			{range .Apks}
-			%li %a[href=/console/index?name={.Badging.Package.Name}]
+			%li[style="position: relative;"] %a[href=/console/index?name={.Badging.Package.Name}]
 
-				%img.pull-left.icon-32
-					[style="margin-right: 10px;"]
+				%img.pull-left
+					[style="margin-right: 10px; width: 38px;"]
 					[src=/console/icon?id={.IconId.Hex}]
 
 				{if .ReportIds}
-				%span.typeahead.alert-error.pull-right
-					[style="padding:3px;"]
+				%span.alert.alert-error
+					[style="padding:3px; position: absolute; top: 0px; right: 0px;"]
 					{len .ReportIds}
 				{end}
 
 				{.Badging.ApplicationLabel}
 
-				%span[style="font-size:0.85em;padding:3px;"] vc{.Badging.Package.VersionCode}<br/>
-				%span[style="font-size:0.85em;"] {.Badging.Package.Name}
+				%span[style="font-size:0.8em;padding:3px;"] vc{.Badging.Package.VersionCode}<br/>
+				%span[style="font-size:0.8em;"] {.Badging.Package.Name}
 
 			%li.divider
 			{end}

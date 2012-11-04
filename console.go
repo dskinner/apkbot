@@ -12,20 +12,46 @@ import (
 	"time"
 )
 
+
+//
+func stacktraceCollapse(reports []*Report) (traces []string) {
+
+	for _, report := range reports {
+
+		var trace []string
+		lines := strings.Split(report.StackTrace, "\n")
+
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "...") || strings.HasPrefix(line, "at android") || strings.HasPrefix(line, "at com.android") || strings.HasPrefix(line, "at java") || strings.HasPrefix(line, "at dalvik") {
+				continue
+			} else {
+				trace = append(trace, line)
+			}
+		}
+
+		traces = append(traces, strings.Join(trace, "\n"))
+	}
+
+	return traces
+}
+
 // groupErrors iterates over apk.Errors and groups them by stack trace.
 func groupErrors(reports []*Report) (groups []bson.M) {
 
-	traces := []string{}
-	for _, e := range reports {
-		traces = append(traces, e.StackTrace)
-	}
+	traces := stacktraceCollapse(reports)
+	//var traces []string
+	//for i := len(reports) - 1; i >= 0; i-- {
+	//	traces = append(traces, reports[i].StackTrace)
+	//}
+	//
 
 	used := []string{}
 
 	// iter backwards to show most recent traces first
 	for i := len(reports) - 1; i >= 0; i-- {
 		e := reports[i]
-		trace := e.StackTrace
+		trace := traces[i]
 
 		if containString(used, trace) {
 			continue
@@ -39,6 +65,48 @@ func groupErrors(reports []*Report) (groups []bson.M) {
 	}
 
 	return groups
+}
+
+//
+func attachGroupDetails(master *Report, reports []*Report) {
+
+	var installIds []string
+
+	mTrace := stacktraceCollapse([]*Report{master})[0]
+	traces := stacktraceCollapse(reports)
+
+	for i, report := range reports {
+		rTrace := traces[i]
+
+		if mTrace == rTrace {
+		//if master.StackTrace == report.StackTrace {
+
+			master.TotalErrors += 1
+
+			if !containString(master.AndroidVersions, report.AndroidVersion) {
+				master.AndroidVersions = append(master.AndroidVersions, report.AndroidVersion)
+			}
+
+			s := report.Brand + " - " + report.PhoneModel
+
+			//if !containString(master.Brands, report.Brand) {
+			//	master.Brands = append(master.Brands, report.Brand)
+			//}
+
+			if !containString(master.PhoneModels, s) {
+				master.PhoneModels = append(master.PhoneModels, s)
+			}
+			if !containString(installIds, report.InstallationId) {
+				installIds = append(installIds, report.InstallationId)
+			}
+
+			if report.Id != master.Id {
+				master.ReportIds = append(master.ReportIds, report.Id)
+			}
+		}
+	}
+
+	master.UniqueInstalls = len(installIds)
 }
 
 //
@@ -106,6 +174,13 @@ func index(w http.ResponseWriter, r *http.Request) *dae.Error {
 		reportId := r.FormValue("report")
 		if reportId != "" {
 			db.C("reports").FindId(bson.ObjectIdHex(reportId)).One(&data.Report)
+			// get info from related reports to attach here
+			var reports []*Report
+			q = bson.M{"apkid": data.Active.Id}
+			if err := db.C("reports").Find(q).All(&reports); err != nil {
+				return dae.NewError(err, 500, "Error querying for apk reports.")
+			}
+			attachGroupDetails(data.Report, reports)
 		} else {
 			var reports []*Report
 			q = bson.M{"apkid": data.Active.Id}
@@ -174,8 +249,14 @@ func icon(w http.ResponseWriter, r *http.Request) *dae.Error {
 	return nil
 }
 
+func newuser(w http.ResponseWriter, r *http.Request) *dae.Error {
+	dae.Render(w, r, nil)
+	return nil
+}
+
 func init() {
 	http.Handle("/console/index", dae.Handler(dae.Auth).Add(index))
 	http.Handle("/console/download", dae.Handler(dae.Auth).Add(download))
 	http.Handle("/console/icon", dae.Handler(dae.Auth).Add(icon))
+	http.Handle("/console/newuser", dae.Handler(dae.Auth).Add(newuser))
 }

@@ -138,6 +138,37 @@ func profilePassword(w http.ResponseWriter, r *http.Request) *dae.Error {
 	return nil
 }
 
+
+type StringSlice []string
+
+func (slice StringSlice) Contains(s string) bool {
+	for _, val := range slice {
+		if val == s {
+			return true
+		}
+	}
+	return false
+}
+
+func (slice StringSlice) Count(s string) (count int) {
+	for _, val := range slice {
+		if val == s {
+			count++
+		}
+	}
+	return count
+}
+
+
+func test() {
+	var slice []string
+	slice = append(slice, "one")
+	slice = append(slice, "two")
+
+	StringSlice(slice).Contains("one")
+	StringSlice(slice).Count("two")
+}
+
 // containString is a helper for determining if []string contains string.
 func containString(slc []string, s string) bool {
 	for _, v := range slc {
@@ -160,6 +191,9 @@ func countString(slc []string, s string) (count int) {
 }
 
 func init() {
+	dae.Cache = false
+	dae.Debug = false
+
 	res := http.FileServer(http.Dir("res/"))
 	http.Handle("/img/", res)
 	http.Handle("/css/", res)

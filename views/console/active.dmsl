@@ -1,9 +1,9 @@
-.hero-unit
-	%img.pull-left[width=72]
-		[style="margin-right: 10px;"]
+.well
+	%img.pull-left
+		[style="margin-right: 20px; width: 112px;"]
 		[src=/console/icon?id={.Active.IconId.Hex}]
 
-	%h2 {.Active.Badging.ApplicationLabel}
+	%h2[style="margin: 0 !important; line-height: normal !important;"] {.Active.Badging.ApplicationLabel}
 		%span[style=font-weight:normal;font-size:0.6em;] {.Active.Time}
 
 	%p
