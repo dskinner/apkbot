@@ -39,11 +39,6 @@ func stacktraceCollapse(reports []*Report) (traces []string) {
 func groupErrors(reports []*Report) (groups []bson.M) {
 
 	traces := stacktraceCollapse(reports)
-	//var traces []string
-	//for i := len(reports) - 1; i >= 0; i-- {
-	//	traces = append(traces, reports[i].StackTrace)
-	//}
-	//
 
 	used := []string{}
 

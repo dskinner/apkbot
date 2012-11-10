@@ -41,7 +41,7 @@ type Report struct {
 	ApkId bson.ObjectId
 	Time  time.Time
 
-	// Group details
+	// Group details TODO get this out of here
 	Brands          []string
 	PhoneModels     []string
 	ReportIds       []bson.ObjectId
@@ -85,6 +85,7 @@ type Report struct {
 	UserEmail            string `USER_EMAIL`
 }
 
+// ignoreField is a static list of fields to not export when creating a CSV.
 func ignoreField(name string) bool {
 	switch name {
 	case "Id", "ApkId", "Time", "Brands", "PhoneModels", "ReportIds", "AndroidVersions", "UniqueInstalls", "TotalErrors":
@@ -93,6 +94,7 @@ func ignoreField(name string) bool {
 	return false
 }
 
+// listFields returns CSV header values as a slice.
 func listFields(data interface{}) (fields []string) {
 	t := reflect.ValueOf(data).Type()
 	for i := 0; i < t.NumField(); i++ {
@@ -143,7 +145,7 @@ func exportCSV(w http.ResponseWriter, r *http.Request) *dae.Error {
 	return nil
 }
 
-// report is a web handler that saves ACRA reports.
+// report is a web handler that saves submitted ACRA reports.
 func report(w http.ResponseWriter, r *http.Request) *dae.Error {
 
 	if err := r.ParseForm(); err != nil {
@@ -164,7 +166,7 @@ func report(w http.ResponseWriter, r *http.Request) *dae.Error {
 		return dae.NewError(err, 200, fmt.Sprintf("No apk by given name and version code found: NAME %s VC %s", name, vc))
 	}
 
-	// save report
+	// save report using generic map to keep values not accounted for in Report struct.
 	m := bson.M{}
 	for k, v := range r.Form {
 		if len(v) == 1 {
