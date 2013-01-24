@@ -3,7 +3,9 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	"dasa.cc/dae"
+	"dasa.cc/dae/context"
+	"dasa.cc/dae/datastore"
+	"dasa.cc/dae/handler"
 	"dasa.cc/dae/user"
 	"encoding/csv"
 	"fmt"
@@ -105,7 +107,7 @@ func listFields(data interface{}) (fields []string) {
 	return fields
 }
 
-func exportCSV(w http.ResponseWriter, r *http.Request) *dae.Error {
+func exportCSV(w http.ResponseWriter, r *http.Request) *handler.Error {
 
 	w.Header().Set("Content-Type", "text/csv")
 	w.Header().Set("Content-Disposition", "attachment;filename=export.csv")
@@ -116,13 +118,13 @@ func exportCSV(w http.ResponseWriter, r *http.Request) *dae.Error {
 	csvHeaders := listFields(sampleReport)
 	wrtr.Write(csvHeaders)
 
-	db := dae.NewDB()
+	db := datastore.New()
 	defer db.Close()
 
 	var reports []*Report
 	q := bson.M{"apkid": bson.ObjectIdHex(r.FormValue("id"))}
 	if err := db.C("reports").Find(q).All(&reports); err != nil {
-		return dae.NewError(err, 500, "Error querying for apk reports.")
+		return handler.NewError(err, 500, "Error querying for apk reports.")
 	}
 
 	for _, report := range reports {
@@ -144,13 +146,13 @@ func exportCSV(w http.ResponseWriter, r *http.Request) *dae.Error {
 }
 
 // report is a web handler that saves ACRA reports.
-func report(w http.ResponseWriter, r *http.Request) *dae.Error {
+func report(w http.ResponseWriter, r *http.Request) *handler.Error {
 
 	if err := r.ParseForm(); err != nil {
-		return dae.NewError(err, 500, "Error parsing form data.")
+		return handler.NewError(err, 500, "Error parsing form data.")
 	}
 
-	db := dae.NewDB()
+	db := datastore.New()
 	defer db.Close()
 
 	// find apk
@@ -161,7 +163,7 @@ func report(w http.ResponseWriter, r *http.Request) *dae.Error {
 	q := bson.M{"badging.package.name": name, "badging.package.versionCode": vc}
 	if err := db.C("apks").Find(q).Sort("-time").One(&apk); err != nil {
 		// return 200 so acra doesn't keep resubmitting the report
-		return dae.NewError(err, 200, fmt.Sprintf("No apk by given name and version code found: NAME %s VC %s", name, vc))
+		return handler.NewError(err, 200, fmt.Sprintf("No apk by given name and version code found: NAME %s VC %s", name, vc))
 	}
 
 	// save report
@@ -177,12 +179,12 @@ func report(w http.ResponseWriter, r *http.Request) *dae.Error {
 	m["time"] = time.Now()
 
 	if err := db.C("reports").Insert(m); err != nil {
-		return dae.NewError(err, 500, "Error inserting new report")
+		return handler.NewError(err, 500, "Error inserting new report")
 	}
 
 	apk.ReportIds = append([]bson.ObjectId{reportId}, apk.ReportIds...)
 	if err := db.C("apks").UpdateId(apk.Id, apk); err != nil {
-		return dae.NewError(err, 500, "Error updating apk reportids")
+		return handler.NewError(err, 500, "Error updating apk reportids")
 	}
 
 	// send email notify if desired by user
@@ -192,16 +194,16 @@ func report(w http.ResponseWriter, r *http.Request) *dae.Error {
 }
 
 // upload is a web handler for receiving an apk.
-func upload(w http.ResponseWriter, r *http.Request) *dae.Error {
+func upload(w http.ResponseWriter, r *http.Request) *handler.Error {
 
 	// dont use memory for holding apk
 	if err := r.ParseMultipartForm(0); err != nil {
-		return dae.NewError(err, 500, "Unable to parse multipart form.")
+		return handler.NewError(err, 500, "Unable to parse multipart form.")
 	}
 
 	f, _, err := r.FormFile("apk")
 	if err != nil {
-		return dae.NewError(err, 500, "Form file \"apk\" does not exist")
+		return handler.NewError(err, 500, "Form file \"apk\" does not exist")
 	}
 
 	// dump badging and locate appropriate icon name within apk
@@ -212,25 +214,25 @@ func upload(w http.ResponseWriter, r *http.Request) *dae.Error {
 	// locate tmp file and extract icon
 	fi, err := f.(*os.File).Stat()
 	if err != nil {
-		return dae.NewError(err, 500, "Can't stat file.")
+		return handler.NewError(err, 500, "Can't stat file.")
 	}
 
 	zr, err := zip.NewReader(f, fi.Size())
 	if err != nil {
-		return dae.NewError(err, 500, "Not a valid zip archive")
+		return handler.NewError(err, 500, "Not a valid zip archive")
 	}
 
 	icon := zipReadBytes(zr, res)
 
 	// Link current user to package name, save badging, apk file, and icon file.
-	db := dae.NewDB()
+	db := datastore.New()
 	defer db.Close()
 
-	u := user.Current(dae.NewContext(r), db)
+	u := user.Current(context.New(r), db)
 
 	apkFile, err := db.FS().Create("")
 	if err != nil {
-		return dae.NewError(err, 500, "Can't save apk")
+		return handler.NewError(err, 500, "Can't save apk")
 	}
 
 	defer apkFile.Close()
@@ -238,7 +240,7 @@ func upload(w http.ResponseWriter, r *http.Request) *dae.Error {
 
 	iconFile, err := db.FS().Create("")
 	if err != nil {
-		return dae.NewError(err, 500, "Can't save icon")
+		return handler.NewError(err, 500, "Can't save icon")
 	}
 
 	defer iconFile.Close()
@@ -256,13 +258,13 @@ func upload(w http.ResponseWriter, r *http.Request) *dae.Error {
 	}
 
 	if err = db.C("apks").Insert(apkM); err != nil {
-		return dae.NewError(err, 500, "Error inserting apk info.")
+		return handler.NewError(err, 500, "Error inserting apk info.")
 	}
 
 	project := ProjectByName(u, apkName)
 	project.ApkIds = append([]bson.ObjectId{apkId}, project.ApkIds...)
 	if _, err = db.C("projects").UpsertId(project.Id, project); err != nil {
-		return dae.NewError(err, 500, "Error upserting project.")
+		return handler.NewError(err, 500, "Error upserting project.")
 	}
 
 	http.Redirect(w, r, "/console/index", 302)
@@ -387,8 +389,8 @@ func parseMap(s string) map[string]interface{} {
 
 // register our web handlers.
 func init() {
-	http.Handle("/console/upload", dae.NewHandler(dae.Auth, upload))
-	http.Handle("/console/exportCSV", dae.NewHandler(dae.Auth, exportCSV))
-	http.Handle("/report", dae.Handler(report))
-	http.Handle("/report_error", dae.Handler(report)) // compat for apps in the wild
+	http.Handle("/console/upload", handler.New(handler.Auth, upload))
+	http.Handle("/console/exportCSV", handler.New(handler.Auth, exportCSV))
+	http.Handle("/report", handler.New(report))
+	http.Handle("/report_error", handler.New(report)) // compat for apps in the wild
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func TestProjects(t *testing.T) {
-	db := dae.NewDB()
+	db := datastore.New()
 	defer db.Close()
 
 	u, err := user.FindEmail(db, "daniel@dasa.cc")

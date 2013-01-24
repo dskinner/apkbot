@@ -2,6 +2,10 @@ package main
 
 import (
 	"dasa.cc/dae"
+	"dasa.cc/dae/context"
+	"dasa.cc/dae/datastore"
+	"dasa.cc/dae/handler"
+	"dasa.cc/dae/render"
 	"dasa.cc/dae/user"
 	"flag"
 	"labix.org/v2/mgo/bson"
@@ -12,53 +16,11 @@ import (
 	"runtime/pprof"
 )
 
-func login(w http.ResponseWriter, r *http.Request) *dae.Error {
-	c := dae.NewContext(r)
-
-	if r.Method == "GET" {
-		flashes := c.Session().Flashes()
-		c.Session().Save(r, w)
-		dae.Render(w, r, flashes)
-		return nil
-	}
-
-	db := dae.NewDB()
+func profile(w http.ResponseWriter, r *http.Request) *handler.Error {
+	db := datastore.New()
 	defer db.Close()
 
-	u, err := user.FindEmail(db, r.FormValue("email"))
-	if err != nil {
-		c.Session().AddFlash("User not found!")
-		c.Session().Save(r, w)
-		http.Redirect(w, r, "/login", 302)
-		return nil
-	}
-
-	if u.Validate(r.FormValue("password")) {
-		user.SetCurrent(c, u)
-		c.Session().Save(r, w)
-		http.Redirect(w, r, "/console/index", 302)
-	} else {
-		c.Session().AddFlash("Password doesn't match!")
-		c.Session().Save(r, w)
-		http.Redirect(w, r, "/login", 302)
-	}
-
-	return nil
-}
-
-func logout(w http.ResponseWriter, r *http.Request) *dae.Error {
-	c := dae.NewContext(r)
-	user.DelCurrent(c)
-	c.Session().Save(r, w)
-	http.Redirect(w, r, "/login", 302)
-	return nil
-}
-
-func profile(w http.ResponseWriter, r *http.Request) *dae.Error {
-	db := dae.NewDB()
-	defer db.Close()
-
-	c := dae.NewContext(r)
+	c := context.New(r)
 	u := user.Current(c, db)
 
 	errs := []string{}
@@ -74,16 +36,16 @@ func profile(w http.ResponseWriter, r *http.Request) *dae.Error {
 	}
 	c.Session().Save(r, w)
 
-	dae.Render(w, r, bson.M{"User": u, "Errors": errs, "Messages": msgs})
+	render.Auto(w, r, bson.M{"User": u, "Errors": errs, "Messages": msgs})
 
 	return nil
 }
 
-func profileUpdate(w http.ResponseWriter, r *http.Request) *dae.Error {
-	db := dae.NewDB()
+func profileUpdate(w http.ResponseWriter, r *http.Request) *handler.Error {
+	db := datastore.New()
 	defer db.Close()
 
-	c := dae.NewContext(r)
+	c := context.New(r)
 	u := user.Current(c, db)
 
 	// TODO truncate?
@@ -94,7 +56,7 @@ func profileUpdate(w http.ResponseWriter, r *http.Request) *dae.Error {
 	}
 
 	if err := db.C("users").UpdateId(u.Id, u); err != nil {
-		return dae.NewError(err, 500, "Error updating user profile")
+		return handler.NewError(err, 500, "Error updating user profile")
 	}
 
 	c.Session().AddFlash("Changes saved.")
@@ -104,16 +66,16 @@ func profileUpdate(w http.ResponseWriter, r *http.Request) *dae.Error {
 	return nil
 }
 
-func profilePassword(w http.ResponseWriter, r *http.Request) *dae.Error {
+func profilePassword(w http.ResponseWriter, r *http.Request) *handler.Error {
 
 	// redirect on return
 	defer http.Redirect(w, r, "/console/profile", http.StatusFound)
 
 	// setup env
-	db := dae.NewDB()
+	db := datastore.New()
 	defer db.Close()
 
-	c := dae.NewContext(r)
+	c := context.New(r)
 	defer c.Session().Save(r, w)
 
 	u := user.Current(c, db)
@@ -131,7 +93,7 @@ func profilePassword(w http.ResponseWriter, r *http.Request) *dae.Error {
 
 	u.SetPassword(newPass)
 	if err := db.C("users").UpdateId(u.Id, u); err != nil {
-		return dae.NewError(err, 500, "Error updating user password!")
+		return handler.NewError(err, 500, "Error updating user password!")
 	}
 
 	c.Session().AddFlash("Changes saved.")
@@ -189,19 +151,18 @@ func countString(slc []string, s string) (count int) {
 }
 
 func init() {
-	dae.Cache = false
-	dae.Debug = false
+	render.Cache = false
+	handler.Debug = false
 
-	res := http.FileServer(http.Dir("res/"))
-	http.Handle("/img/", res)
-	http.Handle("/css/", res)
-	http.Handle("/js/", res)
+	datastore.DBHost = "localhost"
+	datastore.DBName = "apkbot"
 
-	http.Handle("/login", dae.Handler(login))
-	http.Handle("/logout", dae.Handler(logout))
-	http.Handle("/console/profile", dae.NewHandler(dae.Auth, profile))
-	http.Handle("/console/profile/update", dae.NewHandler(dae.Auth, profileUpdate))
-	http.Handle("/console/profile/password", dae.NewHandler(dae.Auth, profilePassword))
+	dae.RegisterFileServer("res/")
+	user.RegisterHandlers()
+
+	http.Handle("/console/profile", handler.New(handler.Auth, profile))
+	http.Handle("/console/profile/update", handler.New(handler.Auth, profileUpdate))
+	http.Handle("/console/profile/password", handler.New(handler.Auth, profilePassword))
 }
 
 var adduser = flag.String("adduser", "", "add a new user with the given email")
@@ -214,7 +175,7 @@ func main() {
 		u := user.New()
 		u.Email = *adduser
 		u.SetPassword("qwerty")
-		db := dae.NewDB()
+		db := datastore.New()
 		defer db.Close()
 		if err := db.C("users").Insert(u); err != nil {
 			log.Fatal(err)

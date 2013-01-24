@@ -1,7 +1,7 @@
 package main
 
 import (
-	"dasa.cc/dae"
+	"dasa.cc/dae/datastore"
 	"dasa.cc/dae/user"
 	"labix.org/v2/mgo/bson"
 )
@@ -18,7 +18,7 @@ type Project struct {
 func ProjectByName(u *user.User, name string) *Project {
 	var projects []Project
 
-	db := dae.NewDB()
+	db := datastore.New()
 	defer db.Close()
 
 	q := bson.M{"userids": u.Id}
@@ -39,14 +39,14 @@ func ProjectByName(u *user.User, name string) *Project {
 }
 
 // ProjectHistory returns a slice of all apks for project.
-func (p *Project) History(db *dae.DB) (apks []*Apk) {
+func (p *Project) History(db *datastore.DB) (apks []*Apk) {
 	q := bson.M{"_id": bson.M{"$in": p.ApkIds}}
 	db.C("apks").Find(q).Sort("-time").All(&apks)
 	return apks
 }
 
 // ProjectsOverview provides a list of last apk uploaded for each project in slice.
-func ProjectsOverview(db *dae.DB, projects []*Project) (apks []*Apk) {
+func ProjectsOverview(db *datastore.DB, projects []*Project) (apks []*Apk) {
 	var ids []bson.ObjectId
 	for _, p := range projects {
 		ids = append(ids, p.ApkIds[0])
@@ -60,7 +60,7 @@ func ProjectsOverview(db *dae.DB, projects []*Project) (apks []*Apk) {
 }
 
 // Projects retrieves a list of the user's projects from db.
-func ProjectsByUser(u *user.User, db *dae.DB) (projects []*Project) {
+func ProjectsByUser(u *user.User, db *datastore.DB) (projects []*Project) {
 	q := bson.M{"userids": u.Id}
 	if err := db.C("projects").Find(q).All(&projects); err != nil {
 		panic(err)

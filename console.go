@@ -2,7 +2,10 @@ package main
 
 import (
 	"bytes"
-	"dasa.cc/dae"
+	"dasa.cc/dae/context"
+	"dasa.cc/dae/datastore"
+	"dasa.cc/dae/handler"
+	"dasa.cc/dae/render"
 	"dasa.cc/dae/user"
 	"fmt"
 	"io"
@@ -109,7 +112,7 @@ func attachGroupDetails(master *Report, reports []*Report) {
 }
 
 //
-func index(w http.ResponseWriter, r *http.Request) *dae.Error {
+func index(w http.ResponseWriter, r *http.Request) *handler.Error {
 	// response struct
 	var data struct {
 		User    *user.User
@@ -122,11 +125,11 @@ func index(w http.ResponseWriter, r *http.Request) *dae.Error {
 
 	var q bson.M
 
-	db := dae.NewDB()
+	db := datastore.New()
 	defer db.Close()
 
 	// get session user
-	c := dae.NewContext(r)
+	c := context.New(r)
 	data.User = user.Current(c, db)
 
 	// get user projects
@@ -177,44 +180,44 @@ func index(w http.ResponseWriter, r *http.Request) *dae.Error {
 			var reports []*Report
 			q = bson.M{"apkid": data.Active.Id}
 			if err := db.C("reports").Find(q).All(&reports); err != nil {
-				return dae.NewError(err, 500, "Error querying for apk reports.")
+				return handler.NewError(err, 500, "Error querying for apk reports.")
 			}
 			attachGroupDetails(data.Report, reports)
 		} else {
 			var reports []*Report
 			q = bson.M{"apkid": data.Active.Id}
 			if err := db.C("reports").Find(q).All(&reports); err != nil {
-				return dae.NewError(err, 500, "Error querying for apk reports.")
+				return handler.NewError(err, 500, "Error querying for apk reports.")
 			}
 			data.Errors = groupErrors(reports)
 		}
 	}
 
 	//
-	dae.Render(w, r, data)
+	render.Auto(w, r, data)
 
 	return nil
 }
 
 // download provides the requested apk by the given bson.ObjectId
-func download(w http.ResponseWriter, r *http.Request) *dae.Error {
+func download(w http.ResponseWriter, r *http.Request) *handler.Error {
 	var (
 		apk Apk
 		buf bytes.Buffer
 	)
 
-	db := dae.NewDB()
+	db := datastore.New()
 	defer db.Close()
 
 	q := bson.M{"_id": bson.ObjectIdHex(r.FormValue("id"))}
 	err := db.C("apks").Find(q).One(&apk)
 	if err != nil {
-		return dae.NewError(err, 404, "No record of apk.")
+		return handler.NewError(err, 404, "No record of apk.")
 	}
 
 	file, err := db.FS().OpenId(apk.FileId)
 	if err != nil {
-		return dae.NewError(err, 404, "No such apk.")
+		return handler.NewError(err, 404, "No such apk.")
 	}
 
 	io.Copy(&buf, file)
@@ -229,14 +232,14 @@ func download(w http.ResponseWriter, r *http.Request) *dae.Error {
 }
 
 // icon retrieves a previously saved apk icon.
-func icon(w http.ResponseWriter, r *http.Request) *dae.Error {
-	db := dae.NewDB()
+func icon(w http.ResponseWriter, r *http.Request) *handler.Error {
+	db := datastore.New()
 	defer db.Close()
 
 	id := bson.ObjectIdHex(r.FormValue("id"))
 	file, err := db.FS().OpenId(id)
 	if err != nil {
-		return dae.NewError(err, 404, "No such icon.")
+		return handler.NewError(err, 404, "No such icon.")
 	}
 
 	var buf bytes.Buffer
@@ -248,14 +251,14 @@ func icon(w http.ResponseWriter, r *http.Request) *dae.Error {
 	return nil
 }
 
-func newuser(w http.ResponseWriter, r *http.Request) *dae.Error {
-	dae.Render(w, r, nil)
+func newuser(w http.ResponseWriter, r *http.Request) *handler.Error {
+	render.Auto(w, r, nil)
 	return nil
 }
 
 func init() {
-	http.Handle("/console/index", dae.Handler(dae.Auth).Add(index))
-	http.Handle("/console/download", dae.Handler(dae.Auth).Add(download))
-	http.Handle("/console/icon", dae.Handler(dae.Auth).Add(icon))
-	http.Handle("/console/newuser", dae.Handler(dae.Auth).Add(newuser))
+	http.Handle("/console/", handler.New(handler.Auth, index))
+	http.Handle("/console/download", handler.New(handler.Auth, download))
+	http.Handle("/console/icon", handler.New(handler.Auth, icon))
+	http.Handle("/console/newuser", handler.New(handler.Auth, newuser))
 }
