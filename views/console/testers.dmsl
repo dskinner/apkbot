@@ -1,7 +1,0 @@
-extends('overlay.dmsl')
-
-#content
-    %h2#cookie Testers
-
-    %ul for user in dae.mongo.users.find({'dev_apks': {'$in': [package_name]}}):
-        %li {user[email]}

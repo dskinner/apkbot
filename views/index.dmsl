@@ -1,0 +1,62 @@
+!DOCTYPE html
+
+%html[ng-app=apkbot]
+
+	%head
+		%title APKBot
+
+		:css /css/
+			bootstrap.min.css
+			bootstrap-responsive.min.css
+			index.css
+
+		:js /js/libs/
+			jquery-2.0.0.js
+			moment.min.js
+			angular.js
+			angular-resource.js
+			angular-ui.min.js
+			ui-bootstrap-0.2.0.min.js
+			ui-bootstrap-tpls-0.2.0.min.js
+
+		:js /js/
+			services.js
+			filters.js
+			app.js
+			controllers.js
+			upload.js
+
+	%body
+		.navbar.navbar-fixed-top.navbar-inner
+			.container
+				%a.btn.btn-navbar
+					[data-toggle=collapse]
+					[data-target=".nav-collapse"]
+					%span.icon-bar
+					%span.icon-bar
+					%span.icon-bar
+
+				%a.brand[href=#] APKBot
+
+				.nav-collapse %ul.nav
+
+					%li %form
+						[action=/console/upload]
+						[method=post]
+						[enctype=multipart/form-data]
+						
+						%input[type=file][name=apk][onchange=this.form.submit()]
+
+					%li %a#upload <i class="icon-upload"></i> Upload
+
+					! %li.active %a[href=/console/index] Console
+
+				%ng-include#profile-menu
+					[ng-controller=UserMenuCtrl]
+					[src=page]
+
+				#console-menu
+
+		.container
+			%ng-view
+			.footer

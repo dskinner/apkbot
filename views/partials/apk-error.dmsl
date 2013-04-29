@@ -1,0 +1,136 @@
+#apk-error .row-fluid
+
+	.span2
+
+		// TODO figure out where this really goes
+		.btn[ng-click=back()] Back
+
+		%ul.nav.nav-tabs.nav-stacked[ui-scrollfix=60]
+
+			%li %a[href] [ng-click=anchorTo('Affected')] Affected
+			%li %a[href] [ng-click=anchorTo('TimeReceived')] Time Received
+			%li %a[href] [ng-click=anchorTo('StackTrace')] Stack Trace
+			%li %a[href] [ng-click=anchorTo('PhoneModel')] Phone Model
+			%li %a[href] [ng-click=anchorTo('Product')] Product
+			%li %a[href] [ng-click=anchorTo('UserEmail')] User Email
+			%li %a[href] [ng-click=anchorTo('UserComment')] User Comment
+			%li %a[href] [ng-click=anchorTo('DeviceFeatures')] Device Features
+			%li %a[href] [ng-click=anchorTo('Display')] Display
+			%li %a[href] [ng-click=anchorTo('Environment')] Environment
+			%li %a[href] [ng-click=anchorTo('EventsLog')] Events Log
+			%li %a[href] [ng-click=anchorTo('SharedPreferences')] Shared Preferences
+			%li %a[href] [ng-click=anchorTo('Logcat')] Logcat
+
+			%script
+				$("#apk-error .nav").css("width", $("#apk-error .nav").width());
+
+
+	.span10
+
+		.well
+			.anchor#Affected
+
+			.span5
+				%h4 Phone Models Affected
+				%ul %li [ng-repeat=model in apkError.PhoneModels] {{model}}
+
+			.span3
+				%h4 Versions Affected
+				%ul %li [ng-repeat=version in apkError.AndroidVersions] {{version}}
+
+			.alert.alert-info.pull-right
+				<strong>Total</strong> {{apkError.TotalErrors}}<br/>
+				<strong>Unique</strong> {{apkError.UniqueInstalls}}<br/>
+
+
+		.row-fluid
+			.anchor#RelatedReports
+			%h4 Related Reports
+			%ul %li [ng-repeat=id in apkError.ReportIds] %a[href] {{id}}
+
+		// ErrorReport field values
+		.row-fluid
+			.anchor#TimeReceived
+			%h4 Time Received
+			%pre `{{apkError.Time}}`
+
+		.row-fluid
+			.anchor#StackTrace
+			%h4 Stack Trace
+			%pre `{{apkError.StackTrace}}`
+
+		.row-fluid
+			.anchor#PhoneModel
+			%h4 Phone Model
+			%pre `{{apkError.PhoneModel}}`
+
+		.row-fluid
+			.anchor#Product
+			%h4 Product
+			%pre `{{apkError.Product}}`
+
+		.row-fluid
+			.anchor#UserEmail
+			%h4 User Email
+			%pre `{{apkError.UserEmail}}`
+
+		.row-fluid
+			.anchor#UserComment
+			%h4 User Comment
+			%pre `{{apkError.UserComment}}`
+
+		.row-fluid
+			.anchor#DeviceFeatures
+			%h4 Device Features
+			%pre `{{apkError.DeviceFeatures}}`
+
+		.row-fluid
+			.anchor#Display
+			%h4 Display
+			%pre `{{apkError.Display}}`
+
+		.row-fluid
+			.anchor#AvailableMemorySize
+			%h4 Available Memory Size
+			%pre `{{apkError.AvailableMemSize}}`
+
+		.row-fluid
+			.anchor#DumpSystemMemoryInfo
+			%h4 Dump System Memory Info
+			%pre `{{apkError.DumpSysMemInfo}}`
+
+		.row-fluid
+			.anchor#Environment
+			%h4 Environment
+			%pre `{{apkError.Environment}}`
+
+		.row-fluid
+			.anchor#EventsLog
+			%h4 Events Log
+			%pre `{{apkError.EventsLog}}`
+
+		.row-fluid
+			.anchor#InstallationId
+			%h4 Installation Id
+			%pre `{{apkError.InstallationId}}`
+
+		.row-fluid
+			.anchor#InitialConfiguration
+			%h4 Initial Configuration
+			%pre `{{apkError.InitialConfiguration}}`
+
+		.row-fluid
+			.anchor#CrashConfiguration
+			%h4 Crash Configuration
+			%pre `{{apkError.CrashConfiguration}}`
+
+		.row-fluid
+			.anchor#SharedPreferences
+			%h4 Shared Preferences
+			%pre `{{apkError.SharedPreferences}}`
+
+		.row-fluid
+			.anchor#Logcat
+			%h4 Logcat
+			%pre `{{apkError.Logcat}}`
+

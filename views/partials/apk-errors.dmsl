@@ -1,0 +1,39 @@
+#apk-errors [ng-controller=ApkErrorListCtrl]
+
+	.toolbar[ui-scrollfix=60]
+		.btn-group
+			%a.btn[ng-href=/console/exportCSV?id={{apk.Id}}] Export CSV
+			%a.btn Proguard Map
+
+		.pull-right
+
+			%span Page
+				%select
+					[ng-model=opts.page.index]
+					[ng-options=i for i in opts.page.indices]
+					[ng-change=pageOpen(opts.page.index)]
+					[style=width:55px;vertical-align:baseline;]
+				of {{opts.page.num}}
+
+			.btn-group[style=vertical-align:top;]
+				.btn [ng-click=pageLeft()] %i.icon-arrow-left
+				.btn [ng-click=pageRight()] %i.icon-arrow-right
+
+
+	%table.table.table-hover
+
+		%thead %tr
+			%th Error
+			%th Count
+			%th[width=70] Last Seen
+
+		%tbody %tr
+			[ng-repeat=err in errors]
+			[ng-click=showError(err)]
+
+			.anchor[id={{err.id}}]
+			%td {{err.stacktrace}}
+			%td {{err.count}}
+			%td {{err.duration | momentFromNow}}
+
+	%script $("#apk-errors .toolbar").css("width", $("#apk-errors .toolbar").width());

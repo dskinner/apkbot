@@ -1,0 +1,37 @@
+#project
+
+	.row
+
+		.span2
+
+			%img.img-56.pull-left[ng-src=/apk/icon/{{apk.IconId}}]
+
+		.span10
+
+			.badging
+				.pull-left {{apk.Badging.ApplicationLabel}}
+				.muted &nbsp;&nbsp;- {{apk.Badging.Package.Name}} {{apk.Time | date:'medium'}}
+
+			%select#select-apk
+				[ng-model=apk]
+				[ng-options="getVersionString(apk) for apk in history"]
+				[ng-change=apkChange(apk)]
+
+	.row
+
+		.span2
+
+			%ul.nav.nav-tabs.nav-stacked[ui-scrollfix=60]
+
+				%li[ng-class={active: tpl.errors}]
+					%a[ng-click=showErrors()][href] Errors
+						.badge.pull-right {{apk.ReportIds.length}}
+
+				%li[ng-class={active: tpl.testers}]
+					%a[ng-click=showTesters()][href] Testers
+
+				// set width so it stays when scrollfixed
+				%script $("#project .nav").css("width", $("#project .nav").width());
+
+
+		%ng-include.span10 [src="page"]

@@ -1,0 +1,8 @@
+.dropdown.pull-right
+
+	%a.dropdown-toggle.btn
+		%i.icon-user
+		%span.caret
+
+	%ul.dropdown-menu
+		%li %a[href=#/login] Login

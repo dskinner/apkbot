@@ -6,15 +6,15 @@ import (
 	"dasa.cc/dae/context"
 	"dasa.cc/dae/datastore"
 	"dasa.cc/dae/handler"
+	"dasa.cc/dae/render"
 	"dasa.cc/dae/user"
-	"encoding/csv"
 	"fmt"
+	"github.com/gorilla/mux"
 	"io"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"os"
 	"os/exec"
-	"reflect"
 	"strings"
 	"time"
 )
@@ -36,163 +36,6 @@ type Apk struct {
 			VersionName string `versionName`
 		}
 	}
-}
-
-type Report struct {
-	Id    bson.ObjectId `_id`
-	ApkId bson.ObjectId
-	Time  time.Time
-
-	// Group details TODO get this out of here
-	Brands          []string
-	PhoneModels     []string
-	ReportIds       []bson.ObjectId
-	AndroidVersions []string
-	UniqueInstalls  int
-	TotalErrors     int
-
-	// ACRA details
-	AndroidVersion       string `ANDROID_VERSION`
-	AppVersionCode       string `APP_VERSION_CODE`
-	AvailableMemSize     string `AVAILABLE_MEM_SIZE`
-	Brand                string `BRAND`
-	Build                string `BUILD`
-	CrashConfiguration   string `CRASH_CONFIGURATION`
-	CustomData           string `CUSTOM_DATA`
-	DeviceFeatures       string `DEVICE_FEATURES`
-	DeviceId             string `DEVICE_ID`
-	Display              string `DISPLAY`
-	Dropbox              string `DROPBOX`
-	DumpSysMemInfo       string `DUMPSYS_MEMINFO`
-	Environment          string `ENVIRONMENT`
-	EventsLog            string `EVENTSLOG`
-	FilePath             string `FILE_PATH`
-	InitialConfiguration string `INITIAL_CONFIGURATION`
-	InstallationId       string `INSTALLATION_ID`
-	IsSilent             string `IS_SILENT`
-	Logcat               string `LOGCAT`
-	PackageName          string `PACKAGE_NAME`
-	PhoneModel           string `PHONE_MODEL`
-	Product              string `PRODUCT`
-	RadioLog             string `RADIOLOG`
-	ReportId             string `REPORT_ID`
-	SettingsSecure       string `SETTINGS_SECURE`
-	SettingsSystem       string `SETTINGS_SYSTEM`
-	SharedPreferences    string `SHARED_PREFERENCES`
-	StackTrace           string `STACK_TRACE`
-	TotalMemSize         string `TOTAL_MEM_SIZE`
-	UserAppStartDate     string `USER_APP_START_DATE`
-	UserComment          string `USER_COMMENT`
-	UserCrashDate        string `USER_CRASH_DATE`
-	UserEmail            string `USER_EMAIL`
-}
-
-// ignoreField is a static list of fields to not export when creating a CSV.
-func ignoreField(name string) bool {
-	switch name {
-	case "Id", "ApkId", "Time", "Brands", "PhoneModels", "ReportIds", "AndroidVersions", "UniqueInstalls", "TotalErrors":
-		return true
-	}
-	return false
-}
-
-// listFields returns CSV header values as a slice.
-func listFields(data interface{}) (fields []string) {
-	t := reflect.ValueOf(data).Type()
-	for i := 0; i < t.NumField(); i++ {
-		name := t.Field(i).Name
-		if ignoreField(name) {
-			continue
-		}
-		fields = append(fields, t.Field(i).Name)
-	}
-	return fields
-}
-
-func exportCSV(w http.ResponseWriter, r *http.Request) *handler.Error {
-
-	w.Header().Set("Content-Type", "text/csv")
-	w.Header().Set("Content-Disposition", "attachment;filename=export.csv")
-
-	wrtr := csv.NewWriter(w)
-
-	var sampleReport Report
-	csvHeaders := listFields(sampleReport)
-	wrtr.Write(csvHeaders)
-
-	db := datastore.New()
-	defer db.Close()
-
-	var reports []*Report
-	q := bson.M{"apkid": bson.ObjectIdHex(r.FormValue("id"))}
-	if err := db.C("reports").Find(q).All(&reports); err != nil {
-		return handler.NewError(err, 500, "Error querying for apk reports.")
-	}
-
-	for _, report := range reports {
-		var record []string
-		s := reflect.ValueOf(report).Elem()
-		t := s.Type()
-		for i := 0; i < s.NumField(); i++ {
-			f := s.Field(i)
-			if ignoreField(t.Field(i).Name) {
-				continue
-			}
-			record = append(record, f.String())
-		}
-
-		wrtr.Write(record)
-	}
-
-	return nil
-}
-
-// report is a web handler that saves ACRA reports.
-func report(w http.ResponseWriter, r *http.Request) *handler.Error {
-
-	if err := r.ParseForm(); err != nil {
-		return handler.NewError(err, 500, "Error parsing form data.")
-	}
-
-	db := datastore.New()
-	defer db.Close()
-
-	// find apk
-	var apk *Apk
-	name := r.FormValue("PACKAGE_NAME")
-	vc := r.FormValue("APP_VERSION_CODE")
-	// TODO use user submitted formid that identifies user with public hash for locating correct package
-	q := bson.M{"badging.package.name": name, "badging.package.versionCode": vc}
-	if err := db.C("apks").Find(q).Sort("-time").One(&apk); err != nil {
-		// return 200 so acra doesn't keep resubmitting the report
-		return handler.NewError(err, 200, fmt.Sprintf("No apk by given name and version code found: NAME %s VC %s", name, vc))
-	}
-
-	// save report using generic map to keep values not accounted for in Report struct.
-	m := bson.M{}
-	for k, v := range r.Form {
-		if len(v) == 1 {
-			m[k] = v[0]
-		}
-	}
-	reportId := bson.NewObjectId()
-	m["_id"] = reportId
-	m["apkid"] = apk.Id
-	m["time"] = time.Now()
-
-	if err := db.C("reports").Insert(m); err != nil {
-		return handler.NewError(err, 500, "Error inserting new report")
-	}
-
-	apk.ReportIds = append([]bson.ObjectId{reportId}, apk.ReportIds...)
-	if err := db.C("apks").UpdateId(apk.Id, apk); err != nil {
-		return handler.NewError(err, 500, "Error updating apk reportids")
-	}
-
-	// send email notify if desired by user
-	//user.
-
-	return nil
 }
 
 // upload is a web handler for receiving an apk.
@@ -339,7 +182,6 @@ func dumpBadging(path string) map[string]interface{} {
 }
 
 // parseSlice returns an array of interface{} given string.
-// TODO this might be made simpler with scanf
 func parseSlice(s string) []interface{} {
 	s = strings.Replace(s, "'", "", -1)
 
@@ -356,7 +198,6 @@ func parseSlice(s string) []interface{} {
 }
 
 // parseMap returns a mapping of key/value pairs based on input string
-// TODO this might be made simpler with fmt.Scanf
 func parseMap(s string) map[string]interface{} {
 
 	var key string
@@ -389,10 +230,87 @@ func parseMap(s string) map[string]interface{} {
 	return m
 }
 
+// download provides the requested apk by the given bson.ObjectId
+func download(w http.ResponseWriter, r *http.Request) *handler.Error {
+	var (
+		apk Apk
+		buf bytes.Buffer
+	)
+
+	db := datastore.New()
+	defer db.Close()
+
+	q := bson.M{"_id": bson.ObjectIdHex(r.FormValue("id"))}
+	err := db.C("apks").Find(q).One(&apk)
+	if err != nil {
+		return handler.NewError(err, 404, "No record of apk.")
+	}
+
+	file, err := db.FS().OpenId(apk.FileId)
+	if err != nil {
+		return handler.NewError(err, 404, "No such apk.")
+	}
+
+	io.Copy(&buf, file)
+
+	filename := fmt.Sprintf("%s-%s.apk", apk.Badging.ApplicationLabel, apk.Time)
+
+	w.Header().Set("Content-Type", "application/vnd.android.package-archive")
+	w.Header().Set("Content-Disposition", "attachment;filename="+filename)
+	w.Write(buf.Bytes())
+
+	return nil
+}
+
+// icon retrieves a previously saved apk icon.
+func icon(w http.ResponseWriter, r *http.Request) *handler.Error {
+	db := datastore.New()
+	defer db.Close()
+
+	id := mux.Vars(r)["iconId"]
+
+	if id == "" {
+		w.Header().Set("Content-type", "image/png")
+		w.Write([]byte{137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 8, 215, 99, 96, 96, 96, 96, 0, 0, 0, 5, 0, 1, 94, 243, 42, 58, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130})
+		return nil
+	}
+
+	file, err := db.FS().OpenId(bson.ObjectIdHex(id))
+	if err != nil {
+		return handler.NewError(err, 404, "No such icon.")
+	}
+
+	var buf bytes.Buffer
+	io.Copy(&buf, file)
+	// TODO set content type correctly
+	w.Header().Set("Content-type", "image/png")
+	w.Write(buf.Bytes())
+
+	return nil
+}
+
+func apkById(w http.ResponseWriter, r *http.Request) *handler.Error {
+	db := datastore.New()
+	defer db.Close()
+
+	apkId := bson.ObjectIdHex(mux.Vars(r)["id"])
+
+	var apk *Apk
+	// TODO confirm user has access to apk
+	if err := db.C("apks").FindId(apkId).One(&apk); err != nil {
+		return handler.NewError(err, 500, "Failed to locate apk.")
+	}
+
+	render.Json(w, apk)
+	return nil
+}
+
 // register our web handlers.
 func init() {
-	http.Handle("/console/upload", handler.New(handler.Auth, upload))
-	http.Handle("/console/exportCSV", handler.New(handler.Auth, exportCSV))
-	http.Handle("/report", handler.New(report))
-	http.Handle("/report_error", handler.New(report)) // compat for apps in the wild
+	router.Handle("/apk/upload", handler.New(handler.Auth, upload))
+	router.Handle("/apk/{apkId}", handler.New(handler.Auth, apkById))
+	router.Handle("/apk/{apkId}/download", handler.New(handler.Auth, download))
+
+	router.Handle("/apk/icon/", handler.New(handler.Auth, icon))
+	router.Handle("/apk/icon/{iconId}", handler.New(handler.Auth, icon))
 }

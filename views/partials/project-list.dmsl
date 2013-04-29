@@ -1,0 +1,31 @@
+#project-list
+
+	%input
+		[type=text]
+		[ng-model=search]
+		[placeholder="Search"]
+
+	%table.table.table-hover
+		%thead
+			%tr
+				%th App Name
+				%th Package Name
+				%th Version
+				%th Proguard Map
+				%th Last Update
+				%th Errors
+		%tbody
+			%tr
+				[ng-repeat=project in projects | filter:search | orderBy:'LastApk.Badging.ApplicationLabel']
+				[ng-click=showProject(project)]
+				[style=cursor:pointer;]
+
+				%td %strong
+					%img.img-24.pull-left[ng-src=/apk/icon/{{project.LastApk.IconId}}]
+					&nbsp;&nbsp;{{project.LastApk.Badging.ApplicationLabel}}
+
+				%td {{project.LastApk.Badging.Package.Name}}
+				%td {{project.LastApk.Badging.Package.VersionCode}}
+				%td {{project.LastApk.ProguardMapId}}
+				%td {{project.LastApk.Time}}
+				%td {{project.LastApk.ReportIds.length}}

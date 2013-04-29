@@ -1,0 +1,85 @@
+#user
+
+	.modal-body
+
+		.alert.alert-success[ng-show=msg] {{msg}}
+		.alert.alert-error[ng-show=err] {{err}}
+
+		%tabs
+
+			%pane[heading=Profile]
+
+				%form[action=/console/profile/update][method=post]
+
+					%label[for=name] Name
+					%input#name[name=name][type=text][value={{user.Name}}]
+
+					%label[for=email] Email
+					%input#email[name=email][type=text][value={{user.Email}}]
+
+					<br/>
+					%input.btn[type=submit][value=Update]
+
+			%pane[heading=Password]
+
+				%form[action=/console/profile/password][method=post]
+
+					%label[for=old-password] Old Password
+					%input#old-password[name=oldpassword][type=password]
+
+					%label[for=password] New Password
+					%input#password[name=password][type=password]
+
+					%label[for=repeat-password] Confirm New Password
+					%input#repeat-password[name=repeatpassword][type=password]
+
+					<br/>
+					%input.btn[type=submit][value=Update]
+
+
+		! .tabbable.tabs-left
+
+			%ul.nav.nav-tabs
+				%li.active %a[href="#settings"][data-toggle=tab] Profile
+				%li %a[href="#changepass"][data-toggle=tab] Password
+				%li %a[href="#dropbox"][data-toggle=tab] Dropbox
+				%li %a[href="#github"][data-toggle=tab] Github
+
+			.tab-content
+
+				#settings.tab-pane.active
+					%form[action=/console/profile/update][method=post]
+
+						%label[for=name] Name
+						%input#name[name=name][type=text][value={{user.Name}}]
+
+						%label[for=email] Email
+						%input#email[name=email][type=text][value={{user.Email}}]
+
+						<br/>
+						%input.btn[type=submit][value=Update]
+
+				#changepass.tab-pane
+					%form[action=/console/profile/password][method=post]
+
+						%label[for=old-password] Old Password
+						%input#old-password[name=oldpassword][type=password]
+
+						%label[for=password] New Password
+						%input#password[name=password][type=password]
+
+						%label[for=repeat-password] Confirm New Password
+						%input#repeat-password[name=repeatpassword][type=password]
+
+						<br/>
+						%input.btn[type=submit][value=Update]
+
+
+				#dropbox.tab-pane
+					%p TODO
+
+				#github.tab-pane
+					%p TODO
+
+	.modal-footer
+		%button.btn.btn-primary[ng-click=close()] Close

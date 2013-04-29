@@ -1,0 +1,11 @@
+.dropdown.pull-right
+
+	%a.dropdown-toggle.btn
+		%i.icon-user
+		&nbsp;{{userText}}&nbsp;
+		%span.caret
+
+	%ul.dropdown-menu
+		%li[ng-click=openUser()] %a[href] Profile
+		%li.divider
+		%li[ng-click=logout()] %a[href] Sign Out
